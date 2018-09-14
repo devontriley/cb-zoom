@@ -104,6 +104,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var canvas = document.querySelector('canvas');
 var c = canvas.getContext('2d');
+var fov = 300;
 
 canvas.width = innerWidth;
 canvas.height = innerHeight;
@@ -128,34 +129,59 @@ addEventListener('resize', function () {
     init();
 });
 
-// Objects
-function Object(x, y, radius, color) {
+// Particles
+function Particle(x, y) {
+    var _this = this;
+
     this.x = x;
     this.y = y;
-    this.radius = radius;
-    this.color = color;
+    this.z = 10;
+    this.x3d = this.x;
+    this.y3d = this.y;
+    this.scale = 10;
+    this.speed_z = 0.5;
+
+    this.draw = function () {
+        // c.beginPath()
+        // c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+        // c.fillStyle = this.color
+        // c.fill()
+        // c.closePath()
+        c.fillStyle = 'red';
+        c.ellipse(_this.x3d, _this.y3d, _this.scale, _this.scale, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+    };
+
+    this.update = function () {
+        // calculate new position
+        _this.z -= _this.speed_z;
+        _this.scale = fov / (_this.z + fov);
+        _this.x3d = _this.x3d * _this.scale;
+        _this.y3d = _this.y3d * _this.scale;
+
+        // remove elements that are off the screen
+        if (_this.z < -fov) {
+            particles.splice(0, 1);
+        }
+
+        // draw new position
+        _this.draw();
+    };
 }
 
-Object.prototype.draw = function () {
-    c.beginPath();
-    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    c.fillStyle = this.color;
-    c.fill();
-    c.closePath();
-};
-
-Object.prototype.update = function () {
-    this.draw();
-};
-
 // Implementation
-var objects = void 0;
+var particles = void 0;
 function init() {
-    objects = [];
+    particles = [];
 
-    for (var i = 0; i < 400; i++) {
-        // objects.push();
+    for (var i = 0; i < 1; i++) {
+        var x = canvas.width / 2 + _utils2.default.randomIntFromRange(-20, 20);
+        var y = canvas.height / 2 + _utils2.default.randomIntFromRange(-20, 20);
+        particles.push(new Particle(x, y));
     }
+
+    console.log(particles);
 }
 
 // Animation Loop
@@ -163,10 +189,15 @@ function animate() {
     requestAnimationFrame(animate);
     c.clearRect(0, 0, canvas.width, canvas.height);
 
-    c.fillText('HTML CANVAS BOILERPLATE', mouse.x, mouse.y);
-    // objects.forEach(object => {
-    //  object.update();
-    // });
+    // Center point
+    c.fillStyle = 'blue';
+    c.ellipse(canvas.width / 2, canvas.height / 2, 2, 2, 0, 0, Math.PI * 2, false);
+    c.fill();
+    c.beginPath();
+
+    particles.forEach(function (particle) {
+        particle.update();
+    });
 }
 
 init();
@@ -199,7 +230,11 @@ function distance(x1, y1, x2, y2) {
     return Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
 }
 
-module.exports = { randomIntFromRange: randomIntFromRange, randomColor: randomColor, distance: distance };
+function fovScale(fov, z) {
+    return fov / (z + fov);
+}
+
+module.exports = { randomIntFromRange: randomIntFromRange, randomColor: randomColor, distance: distance, fovScale: fovScale };
 
 /***/ })
 

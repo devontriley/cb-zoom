@@ -2,6 +2,7 @@ import utils from './utils'
 
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
+const fov = 300
 
 canvas.width = innerWidth
 canvas.height = innerHeight
@@ -26,34 +27,57 @@ addEventListener('resize', () => {
     init()
 })
 
-// Objects
-function Object(x, y, radius, color) {
+// Particles
+function Particle(x, y) {
     this.x = x
     this.y = y
-    this.radius = radius
-    this.color = color
-}
+    this.z = 10
+    this.x3d = this.x
+    this.y3d = this.y
+    this.scale = 10
+    this.speed_z = 0.5
 
-Object.prototype.draw = function() {
-    c.beginPath()
-    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
-    c.fillStyle = this.color
-    c.fill()
-    c.closePath()
-}
+    this.draw = () => {
+        // c.beginPath()
+        // c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
+        // c.fillStyle = this.color
+        // c.fill()
+        // c.closePath()
+        c.fillStyle = 'red';
+        c.ellipse(this.x3d, this.y3d, this.scale, this.scale, 0, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+    }
 
-Object.prototype.update = function() {
-    this.draw()
+    this.update = () => {
+        // calculate new position
+        this.z -= this.speed_z;
+        this.scale = fov / (this.z + fov);
+        this.x3d = this.x3d * this.scale;
+        this.y3d = this.y3d * this.scale;
+
+        // remove elements that are off the screen
+        if (this.z < -fov) {
+            particles.splice(0, 1);
+        }
+
+        // draw new position
+        this.draw()
+    }
 }
 
 // Implementation
-let objects
+let particles
 function init() {
-    objects = []
+    particles = []
 
-    for (let i = 0; i < 400; i++) {
-        // objects.push();
+    for (let i = 0; i < 1; i++) {
+        let x = (canvas.width / 2) + utils.randomIntFromRange(-20, 20)
+        let y = (canvas.height / 2) + utils.randomIntFromRange(-20, 20)
+        particles.push(new Particle(x, y));
     }
+
+    console.log(particles);
 }
 
 // Animation Loop
@@ -61,10 +85,15 @@ function animate() {
     requestAnimationFrame(animate)
     c.clearRect(0, 0, canvas.width, canvas.height)
 
-    c.fillText('HTML CANVAS BOILERPLATE', mouse.x, mouse.y)
-    // objects.forEach(object => {
-    //  object.update();
-    // });
+    // Center point
+    c.fillStyle = 'blue'
+    c.ellipse(canvas.width / 2, canvas.height / 2, 2, 2, 0, 0, Math.PI * 2, false)
+    c.fill()
+    c.beginPath()
+
+    particles.forEach(particle => {
+        particle.update()
+    })
 }
 
 init()
