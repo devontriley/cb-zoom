@@ -1,100 +1,96 @@
-import utils from './utils'
+//creating a canvas using JS
+var canvas = document.querySelector("canvas");
 
-const canvas = document.querySelector('canvas')
-const c = canvas.getContext('2d')
-const fov = 300
+//making the canvas fullscreen
+var w = canvas.width = window.innerWidth;
+var h = canvas.height = window.innerHeight;
+var fov = 250; //pixels are 250px away from us
+var ctx = canvas.getContext("2d");
+canvas.style.backgroundColor = 'black';
 
-canvas.width = innerWidth
-canvas.height = innerHeight
+var rectW = 1;
+var rectH = 1;
 
-const mouse = {
-    x: innerWidth / 2,
-    y: innerHeight / 2
+//an array of pixels with 3 dimensional coordinates
+//a square sheet of dots separated by 5px
+var pixels = [
+    {x: -1, y: -1, startX: (w / 2), startY: (h / 2), z: 0, x2d: undefined, y2d: undefined, w: rectW, h: rectH},
+    // {x: 1, y: -1, z: 0, w: rectW, h: rectH},
+    // {x: -1, y: 1, z: 0, w: rectW, h: rectH},
+    // {x: 1, y: 1, z: 0, w: rectW, h: rectH}
+];
+// var pixels = [];
+// for(var x = -250; x < 250; x+=10)
+//     for(var z = -250; z < 250; z+=10)
+//         pixels.push({x: x, y: 100, z: z});
+
+window.addEventListener('mousewheel', mouseScroll);
+function mouseScroll(e) {
+    e.preventDefault();
+    var deltaY = e.deltaY;
+
+    render(deltaY);
 }
 
-const colors = ['#2185C5', '#7ECEFD', '#FFF6E5', '#FF7F66']
+//time to draw the pixels
+function render(delta)
+{
+    ctx.clearRect(0,0,w,h);
 
-// Event Listeners
-addEventListener('mousemove', event => {
-    mouse.x = event.clientX
-    mouse.y = event.clientY
-})
+    //grabbing a screenshot of the canvas using getImageData
+    //var imagedata = ctx.getImageData(0,0,w,h);
 
-addEventListener('resize', () => {
-    canvas.width = innerWidth
-    canvas.height = innerHeight
+    //looping through all pixel points
+    var i = pixels.length;
+    while(i--) {
+        var pixel = pixels[i];
+        //calculating 2d position for 3d coordinates
+        //fov = field of view = denotes how far the pixels are from us.
+        //the scale will control how the spacing between the pixels will decrease with increasing distance from us.
+        var scale = fov/(fov+pixel.z);
+        var x2d = pixel.x * scale + pixel.startX;
+        var y2d = pixel.y * scale + pixel.startY;
+        var width = pixel.w * scale;
+        var height = pixel.h * scale;
 
-    init()
-})
-
-// Particles
-function Particle(x, y) {
-    this.x = x
-    this.y = y
-    this.z = 10
-    this.x3d = this.x
-    this.y3d = this.y
-    this.scale = 10
-    this.speed_z = 0.5
-
-    this.draw = () => {
-        // c.beginPath()
-        // c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
-        // c.fillStyle = this.color
-        // c.fill()
-        // c.closePath()
-        c.fillStyle = 'red';
-        c.ellipse(this.x3d, this.y3d, this.scale, this.scale, 0, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-    }
-
-    this.update = () => {
-        // calculate new position
-        this.z -= this.speed_z;
-        this.scale = fov / (this.z + fov);
-        this.x3d = this.x3d * this.scale;
-        this.y3d = this.y3d * this.scale;
-
-        // remove elements that are off the screen
-        if (this.z < -fov) {
-            particles.splice(0, 1);
+        if(delta < 0) {
+            pixel.z -= 1;
+        } else {
+            pixel.z += 1;
         }
 
-        // draw new position
-        this.draw()
+        console.log(pixel.x2d + ', ' + pixel.y2d);
+
+        //marking the points green - only if they are inside the screen
+        if(x2d >= 0 && x2d <= w && y2d >= 0 && y2d <= h) {
+
+            pixel.x2d = x2d;
+            pixel.y2d = y2d;
+
+            ctx.beginPath();
+            ctx.rect(x2d, y2d, width, height);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+            ctx.closePath();
+
+            //imagedata.width gives the width of the captured region(canvas) which is multiplied with the Y coordinate and then added to the X coordinate. The whole thing is multiplied by 4 because of the 4 numbers saved to denote r,g,b,a. The final result gives the first color data(red) for the pixel.
+            // var c = (Math.round(y2d) * imagedata.width + Math.round(x2d))*4;
+            // imagedata.data[c] = 0; //red
+            // imagedata.data[c+1] = 255; //green
+            // imagedata.data[c+2] = 60; //blue
+            // imagedata.data[c+3] = 255; //alpha
+        } else {
+            console.log(pixel);
+        }
+
+        if(pixel.z < -fov) pixel.z += 2*fov;
     }
+    //putting imagedata back on the canvas
+    //ctx.putImageData(imagedata, 0, 0);
 }
 
-// Implementation
-let particles
-function init() {
-    particles = []
+//animation time
+//setInterval(render, 1000/30);
 
-    for (let i = 0; i < 1; i++) {
-        let x = (canvas.width / 2) + utils.randomIntFromRange(-20, 20)
-        let y = (canvas.height / 2) + utils.randomIntFromRange(-20, 20)
-        particles.push(new Particle(x, y));
-    }
 
-    console.log(particles);
-}
 
-// Animation Loop
-function animate() {
-    requestAnimationFrame(animate)
-    c.clearRect(0, 0, canvas.width, canvas.height)
-
-    // Center point
-    c.fillStyle = 'blue'
-    c.ellipse(canvas.width / 2, canvas.height / 2, 2, 2, 0, 0, Math.PI * 2, false)
-    c.fill()
-    c.beginPath()
-
-    particles.forEach(particle => {
-        particle.update()
-    })
-}
-
-init()
-animate()

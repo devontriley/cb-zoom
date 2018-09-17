@@ -96,145 +96,93 @@
 "use strict";
 
 
-var _utils = __webpack_require__(/*! ./utils */ "./src/utils.js");
+//creating a canvas using JS
+var canvas = document.querySelector("canvas");
 
-var _utils2 = _interopRequireDefault(_utils);
+//making the canvas fullscreen
+var w = canvas.width = window.innerWidth;
+var h = canvas.height = window.innerHeight;
+var fov = 250; //pixels are 250px away from us
+var ctx = canvas.getContext("2d");
+canvas.style.backgroundColor = 'black';
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+var rectW = 1;
+var rectH = 1;
 
-var canvas = document.querySelector('canvas');
-var c = canvas.getContext('2d');
-var fov = 300;
+//an array of pixels with 3 dimensional coordinates
+//a square sheet of dots separated by 5px
+var pixels = [{ x: -1, y: -1, startX: w / 2, startY: h / 2, z: 0, x2d: undefined, y2d: undefined, w: rectW, h: rectH }];
+// var pixels = [];
+// for(var x = -250; x < 250; x+=10)
+//     for(var z = -250; z < 250; z+=10)
+//         pixels.push({x: x, y: 100, z: z});
 
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+window.addEventListener('mousewheel', mouseScroll);
+function mouseScroll(e) {
+    e.preventDefault();
+    var deltaY = e.deltaY;
 
-var mouse = {
-    x: innerWidth / 2,
-    y: innerHeight / 2
-};
+    render(deltaY);
+}
 
-var colors = ['#2185C5', '#7ECEFD', '#FFF6E5', '#FF7F66'];
+//time to draw the pixels
+function render(delta) {
+    ctx.clearRect(0, 0, w, h);
 
-// Event Listeners
-addEventListener('mousemove', function (event) {
-    mouse.x = event.clientX;
-    mouse.y = event.clientY;
-});
+    //grabbing a screenshot of the canvas using getImageData
+    //var imagedata = ctx.getImageData(0,0,w,h);
 
-addEventListener('resize', function () {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    //looping through all pixel points
+    var i = pixels.length;
+    while (i--) {
+        var pixel = pixels[i];
+        //calculating 2d position for 3d coordinates
+        //fov = field of view = denotes how far the pixels are from us.
+        //the scale will control how the spacing between the pixels will decrease with increasing distance from us.
+        var scale = fov / (fov + pixel.z);
+        var x2d = pixel.x * scale + pixel.startX;
+        var y2d = pixel.y * scale + pixel.startY;
+        var width = pixel.w * scale;
+        var height = pixel.h * scale;
 
-    init();
-});
-
-// Particles
-function Particle(x, y) {
-    var _this = this;
-
-    this.x = x;
-    this.y = y;
-    this.z = 10;
-    this.x3d = this.x;
-    this.y3d = this.y;
-    this.scale = 10;
-    this.speed_z = 0.5;
-
-    this.draw = function () {
-        // c.beginPath()
-        // c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false)
-        // c.fillStyle = this.color
-        // c.fill()
-        // c.closePath()
-        c.fillStyle = 'red';
-        c.ellipse(_this.x3d, _this.y3d, _this.scale, _this.scale, 0, 0, Math.PI * 2);
-        c.fill();
-        c.beginPath();
-    };
-
-    this.update = function () {
-        // calculate new position
-        _this.z -= _this.speed_z;
-        _this.scale = fov / (_this.z + fov);
-        _this.x3d = _this.x3d * _this.scale;
-        _this.y3d = _this.y3d * _this.scale;
-
-        // remove elements that are off the screen
-        if (_this.z < -fov) {
-            particles.splice(0, 1);
+        if (delta < 0) {
+            pixel.z -= 1;
+        } else {
+            pixel.z += 1;
         }
 
-        // draw new position
-        _this.draw();
-    };
-}
+        console.log(pixel.x2d + ', ' + pixel.y2d);
 
-// Implementation
-var particles = void 0;
-function init() {
-    particles = [];
+        //marking the points green - only if they are inside the screen
+        if (x2d >= 0 && x2d <= w && y2d >= 0 && y2d <= h) {
 
-    for (var i = 0; i < 1; i++) {
-        var x = canvas.width / 2 + _utils2.default.randomIntFromRange(-20, 20);
-        var y = canvas.height / 2 + _utils2.default.randomIntFromRange(-20, 20);
-        particles.push(new Particle(x, y));
+            pixel.x2d = x2d;
+            pixel.y2d = y2d;
+
+            ctx.beginPath();
+            ctx.rect(x2d, y2d, width, height);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+            ctx.closePath();
+
+            //imagedata.width gives the width of the captured region(canvas) which is multiplied with the Y coordinate and then added to the X coordinate. The whole thing is multiplied by 4 because of the 4 numbers saved to denote r,g,b,a. The final result gives the first color data(red) for the pixel.
+            // var c = (Math.round(y2d) * imagedata.width + Math.round(x2d))*4;
+            // imagedata.data[c] = 0; //red
+            // imagedata.data[c+1] = 255; //green
+            // imagedata.data[c+2] = 60; //blue
+            // imagedata.data[c+3] = 255; //alpha
+        } else {
+            console.log(pixel);
+        }
+
+        if (pixel.z < -fov) pixel.z += 2 * fov;
     }
-
-    console.log(particles);
+    //putting imagedata back on the canvas
+    //ctx.putImageData(imagedata, 0, 0);
 }
 
-// Animation Loop
-function animate() {
-    requestAnimationFrame(animate);
-    c.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Center point
-    c.fillStyle = 'blue';
-    c.ellipse(canvas.width / 2, canvas.height / 2, 2, 2, 0, 0, Math.PI * 2, false);
-    c.fill();
-    c.beginPath();
-
-    particles.forEach(function (particle) {
-        particle.update();
-    });
-}
-
-init();
-animate();
-
-/***/ }),
-
-/***/ "./src/utils.js":
-/*!**********************!*\
-  !*** ./src/utils.js ***!
-  \**********************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-function randomIntFromRange(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
-function randomColor(colors) {
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function distance(x1, y1, x2, y2) {
-    var xDist = x2 - x1;
-    var yDist = y2 - y1;
-
-    return Math.sqrt(Math.pow(xDist, 2) + Math.pow(yDist, 2));
-}
-
-function fovScale(fov, z) {
-    return fov / (z + fov);
-}
-
-module.exports = { randomIntFromRange: randomIntFromRange, randomColor: randomColor, distance: distance, fovScale: fovScale };
+//animation time
+//setInterval(render, 1000/30);
 
 /***/ })
 
