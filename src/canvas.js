@@ -2,22 +2,26 @@
 var canvas = document.querySelector("canvas");
 
 //making the canvas fullscreen
-var w = canvas.width = window.innerWidth;
-var h = canvas.height = window.innerHeight;
+var canvasW = canvas.width = window.innerWidth;
+var canvasH = canvas.height = window.innerHeight;
 var fov = 250; //pixels are 250px away from us
 var ctx = canvas.getContext("2d");
 canvas.style.backgroundColor = 'black';
 
-var rectW = 1;
-var rectH = 1;
-
 //an array of pixels with 3 dimensional coordinates
 //a square sheet of dots separated by 5px
 var pixels = [
-    {x: -1, y: -1, startX: (w / 2), startY: (h / 2), z: 0, x2d: undefined, y2d: undefined, w: rectW, h: rectH},
-    // {x: 1, y: -1, z: 0, w: rectW, h: rectH},
-    // {x: -1, y: 1, z: 0, w: rectW, h: rectH},
-    // {x: 1, y: 1, z: 0, w: rectW, h: rectH}
+    {
+        start: {w: 10, h: 10, z: 0},
+        x: 0,
+        y: 0,
+        z: 0,
+        x2d: 0,
+        y2d: 0,
+        w: 10,
+        h: 10,
+        animationEnd: false
+    }
 ];
 // var pixels = [];
 // for(var x = -250; x < 250; x+=10)
@@ -32,62 +36,78 @@ function mouseScroll(e) {
     render(deltaY);
 }
 
+function checkIfOnScreen(x, y, w, h) {
+    if(x >= -(w/2) && x <= (canvasW + w/2) && y >= -(h/2) && y <= (canvasH + y/2)) {
+        return true;
+    }
+}
+
 //time to draw the pixels
 function render(delta)
 {
-    ctx.clearRect(0,0,w,h);
-
-    //grabbing a screenshot of the canvas using getImageData
-    //var imagedata = ctx.getImageData(0,0,w,h);
+    ctx.clearRect(0,0,canvasW,canvasH);
 
     //looping through all pixel points
     var i = pixels.length;
     while(i--) {
         var pixel = pixels[i];
-        //calculating 2d position for 3d coordinates
-        //fov = field of view = denotes how far the pixels are from us.
-        //the scale will control how the spacing between the pixels will decrease with increasing distance from us.
-        var scale = fov/(fov+pixel.z);
-        var x2d = pixel.x * scale + pixel.startX;
-        var y2d = pixel.y * scale + pixel.startY;
-        var width = pixel.w * scale;
-        var height = pixel.h * scale;
 
-        if(delta < 0) {
-            pixel.z -= 1;
-        } else {
-            pixel.z += 1;
+        if(pixel.animationEnd && delta < 0) continue;
+
+        // Check mousewheel event to determine zoom direction
+        if(delta) {
+            if(delta < 0 && !pixel.animationEnd) {
+                // scroll up - zoom in
+                pixel.z -= 5;
+            } else {
+                // scroll down - zoom out
+                pixel.animationEnd = false;
+                pixel.z += 5;
+            }
+
+            if(pixel.z > pixel.start.z) {
+                pixel.z = pixel.start.z;
+            }
         }
 
-        console.log(pixel.x2d + ', ' + pixel.y2d);
+        //calculating 2d position for 3d coordinates
+        //fov = field of view = denotes how far the pixels are from us.
+        var scale = fov/(fov+pixel.z);
+        var width = pixel.w * scale;
+        var height = pixel.h * scale;
+        var x2d = (pixel.x * scale) + canvasW/2;
+        var y2d = (pixel.y * scale) + canvasH/2;
 
-        //marking the points green - only if they are inside the screen
-        if(x2d >= 0 && x2d <= w && y2d >= 0 && y2d <= h) {
+        console.log('canvasW: ' + canvasW + '\n' + 'canvasH: ' + canvasH + '\n' + 'x2d: ' + x2d + '\n' + 'y2d: ' + y2d + '\n' + 'z: ' + pixel.z + '\n' + 'w: ' + width + '\n' + 'h: ' + height);
 
-            pixel.x2d = x2d;
-            pixel.y2d = y2d;
-
+        // If pixel is in the window, continue updated position
+        if(!checkIfOnScreen(x2d, y2d, width, height) || pixel.z > 0) {
+            pixel.animationEnd = true;
+            continue;
+        } else {
+            pixel.animationEnd = false;
             ctx.beginPath();
             ctx.rect(x2d, y2d, width, height);
             ctx.fillStyle = 'red';
             ctx.fill();
             ctx.closePath();
-
-            //imagedata.width gives the width of the captured region(canvas) which is multiplied with the Y coordinate and then added to the X coordinate. The whole thing is multiplied by 4 because of the 4 numbers saved to denote r,g,b,a. The final result gives the first color data(red) for the pixel.
-            // var c = (Math.round(y2d) * imagedata.width + Math.round(x2d))*4;
-            // imagedata.data[c] = 0; //red
-            // imagedata.data[c+1] = 255; //green
-            // imagedata.data[c+2] = 60; //blue
-            // imagedata.data[c+3] = 255; //alpha
-        } else {
-            console.log(pixel);
         }
 
-        if(pixel.z < -fov) pixel.z += 2*fov;
+        // Reset fov to start when off screen
+        // if(pixel.z < -fov) {
+        //     pixel.z = fov;
+        // }
     }
-    //putting imagedata back on the canvas
-    //ctx.putImageData(imagedata, 0, 0);
+
+    ctx.beginPath();
+    ctx.fillStyle = 'yellow';
+    ctx.rect(canvasW/2 - 2, canvasH/2 - 2, 4, 4);
+    ctx.fill();
+    ctx.closePath();
+
 }
+
+render(false);
 
 //animation time
 //setInterval(render, 1000/30);
