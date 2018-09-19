@@ -96,33 +96,27 @@
 "use strict";
 
 
-//creating a canvas using JS
 var canvas = document.querySelector("canvas");
-
-//making the canvas fullscreen
 var canvasW = canvas.width = window.innerWidth;
 var canvasH = canvas.height = window.innerHeight;
 var fov = 250; //pixels are 250px away from us
+var totalZoom = 0;
 var ctx = canvas.getContext("2d");
 canvas.style.backgroundColor = 'black';
 
-//an array of pixels with 3 dimensional coordinates
-//a square sheet of dots separated by 5px
 var pixels = [{
-    start: { w: 10, h: 10, z: 0 },
-    x: 0,
-    y: 0,
+    start: { z: 0 },
+    x: 20,
+    y: -20,
     z: 0,
+    depth: 0,
+    startFrame: 0,
     x2d: 0,
     y2d: 0,
-    w: 10,
-    h: 10,
-    animationEnd: false
+    w: 1,
+    h: 1
+    //animationEnd: false
 }];
-// var pixels = [];
-// for(var x = -250; x < 250; x+=10)
-//     for(var z = -250; z < 250; z+=10)
-//         pixels.push({x: x, y: 100, z: z});
 
 window.addEventListener('mousewheel', mouseScroll);
 function mouseScroll(e) {
@@ -132,10 +126,10 @@ function mouseScroll(e) {
     render(deltaY);
 }
 
-function checkIfOnScreen(x, y, w, h) {
-    if (x >= -(w / 2) && x <= canvasW + w / 2 && y >= -(h / 2) && y <= canvasH + y / 2) {
-        return true;
-    }
+function pixelOnScreen(x, y, w, h) {
+    var p = { x: x, y: y, w: w, h: h };
+
+    return p.x > 0 && p.x + p.w < canvasW && p.y > 0 && p.y + p.h < canvasH ? true : false;
 }
 
 //time to draw the pixels
@@ -146,52 +140,46 @@ function render(delta) {
     var i = pixels.length;
     while (i--) {
         var pixel = pixels[i];
+        var zoomDirection = delta < 0 ? 'in' : 'out';
 
-        if (pixel.animationEnd && delta < 0) continue;
+        // Check if pixel should being animating yet
+        if (totalZoom < pixel.startFrame) continue;
 
-        // Check mousewheel event to determine zoom direction
-        if (delta) {
-            if (delta < 0 && !pixel.animationEnd) {
-                // scroll up - zoom in
-                pixel.z -= 5;
-            } else {
-                // scroll down - zoom out
-                pixel.animationEnd = false;
-                pixel.z += 5;
-            }
+        // Since we know we're moving this pixel, we can update its depth value
+        pixel.depth += zoomDirection == 'in' ? 1 : -1;
 
-            if (pixel.z > pixel.start.z) {
-                pixel.z = pixel.start.z;
-            }
+        // Pixel depth should never go below 0: the start position
+        if (pixel.depth < 0) {
+            pixel.depth = 0;
         }
 
-        //calculating 2d position for 3d coordinates
-        //fov = field of view = denotes how far the pixels are from us.
+        // TODO: Need to check if pixel if offsreen, if it is, then we don't want to update the pixel.z value or move it's position anymore
+        // TODO: At this point it should only be increasing the pixel.depth to track it's position while it's offscreen
+
+        pixel.z += zoomDirection == 'in' ? -5 : 5;
+        if (pixel.z > pixel.start.z) {
+            pixel.z = pixel.start.z;
+        }
+
         var scale = fov / (fov + pixel.z);
-        var width = pixel.w * scale;
-        var height = pixel.h * scale;
+        var w = pixel.w * scale;
+        var h = pixel.h * scale;
         var x2d = pixel.x * scale + canvasW / 2;
         var y2d = pixel.y * scale + canvasH / 2;
 
-        console.log('canvasW: ' + canvasW + '\n' + 'canvasH: ' + canvasH + '\n' + 'x2d: ' + x2d + '\n' + 'y2d: ' + y2d + '\n' + 'z: ' + pixel.z + '\n' + 'w: ' + width + '\n' + 'h: ' + height);
+        if (!pixelOnScreen(x2d, y2d, w, h)) continue;
 
-        // If pixel is in the window, continue updated position
-        if (!checkIfOnScreen(x2d, y2d, width, height) || pixel.z > 0) {
-            pixel.animationEnd = true;
-            continue;
-        } else {
-            pixel.animationEnd = false;
-            ctx.beginPath();
-            ctx.rect(x2d, y2d, width, height);
-            ctx.fillStyle = 'red';
-            ctx.fill();
-            ctx.closePath();
-        }
+        // Skip to next pixel - this one is done animating
+        //if(pixel.animationEnd && delta < 0) continue;
 
-        // Reset fov to start when off screen
-        // if(pixel.z < -fov) {
-        //     pixel.z = fov;
-        // }
+        console.log('animate');
+
+        pixel.animationEnd = false;
+        ctx.beginPath();
+        ctx.rect(x2d, y2d, w, h);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.closePath();
     }
 
     ctx.beginPath();
