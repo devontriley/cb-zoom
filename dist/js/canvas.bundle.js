@@ -116,7 +116,8 @@ svg.style.top = canvasH / 2 - svgBbox.height / 2 + 'px';
 // Paths
 var pathsArr = [];
 var paths = svg.querySelectorAll('path');
-for (var i = 0; i < 1; i++) {
+
+for (var i = 0; i < 2; i++) {
   var p = paths[i];
   var boundingRect = p.getBoundingClientRect();
   var bbox = p.getBBox();
@@ -177,14 +178,16 @@ function render(delta) {
     var radians = Math.atan2(svgBbox.height / 2 - (path.bbox.height / 2 - path.bbox.y / 2), svgBbox.width / 2 - (path.bbox.width / 2 - path.bbox.x / 2));
     var angle = radians * 180 / Math.PI;
 
+    var a = svgBbox.height / 2 - (bbox.height / 2 - bbox.y / 2);
+    var b = svgBbox.width / 2 - (bbox.width / 2 - bbox.x / 2);
+    var c = Math.sqrt(a * a + b * b);
+
     console.log('radians: ' + radians + '\nangle: ' + angle);
 
     console.log('x: ' + -(speed * Math.sin(angle)));
     console.log('y: ' + -(speed * Math.cos(angle)));
 
-    var a = svgBbox.height / 2 - (bbox.height / 2 - bbox.y / 2);
-    var b = svgBbox.width / 2 - (bbox.width / 2 - bbox.x / 2);
-    var c = Math.sqrt(a * a + b * b);
+    console.log('c: ' + c);
 
     var scale = fov / (fov + path.z);
     var w = path.w * scale;
