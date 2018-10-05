@@ -4,11 +4,9 @@ var canvasH = window.innerHeight;
 canvas.style.width = canvasW + 'px';
 canvas.style.height = canvasH + 'px';
 
-var fov = 100; //pixels are 250px away from us
+var fov = 100;
 var progress = 0;
-//var speed = 1;
 
-// SVG
 var svg = canvas.querySelector('svg');
 var svgBbox = svg.getBBox();
 svg.style.position = 'absolute';
@@ -22,26 +20,21 @@ var paths = svg.querySelectorAll('path');
 for (var i = 0; i < paths.length; i++) {
     var p = paths[i];
     var boundingRect = p.getBoundingClientRect();
-    var bbox = p.getBBox();
 
     p.style.position = 'relative';
     p.style.transformOrigin = 'center center';
 
     pathsArr.push({
         ref: p,
-        bbox: bbox,
-        //w: bbox.height,
-        //h: bbox.width,
-        //x: bbox.x + svgBbox.width / 2,
-        //y: bbox.y + svgBbox.height / 2,
-        //z: 0,
-        //start: {z: 0},
-        //offscreenDepth: 0,
-        startFrame: i * 10,
-        direction: 1
-        //direction: Math.random() < 0.5 ? -1 : 1
+        startFrame: i * 50,
+        scale: 1,
+        isAnimating: true,
+        endFrame: 0,
+        direction: Math.random() < 0.5 ? -1 : 1
     });
 }
+
+console.log(pathsArr);
 
 window.addEventListener('mousewheel', mouseScroll);
 
@@ -56,10 +49,6 @@ function isShapeOnScreen(position) {
     return (position.bottom <= 0 || position.top >= window.innerHeight || position.left >= window.innerWidth || position.right <= 0) ? false : true;
 }
 
-// function pixelOnScreen(x, y, w, h) {
-//     return (x > 0 - w && x + w < canvasW + w && y > 0 - h && y + h < canvasH + h) ? true : false;
-// }
-
 function render(delta) {
 
     var zoomDirection = (delta < 0) ? 'in' : 'out';
@@ -72,49 +61,47 @@ function render(delta) {
         return;
     }
 
+    //console.log(progress);
+
     while(i--) {
         var path = pathsArr[i];
-        var startFrame = path.startFrame;
-        var dir = path.direction;
-        var position = path.ref.getBoundingClientRect();
 
-        // Don't animate the shape if it's not on the screen
-        if(!isShapeOnScreen(position)) {
-            continue;
-        }
+        // if(progress < startFrame) {
+        //     continue;
+        // } else {
+        //     path.isAnimating = true;
+        // }
 
-        // Check if shape is on screen
-        if(progress >= startFrame) {
+        if(path.isAnimating && (progress >= path.startFrame)) {
+            var startFrame = path.startFrame;
+            var dir = path.direction;
+            var position = path.ref.getBoundingClientRect();
+            var shapeProgress = (progress - startFrame) * path.direction; // time since this shape started animating
+            var increment = 0;
 
-            var shapeProgress = progress - startFrame; // time since this shape started animating
+            var scale = fov / (fov - (shapeProgress * 5));
 
-            // TODO: better way to do this
-            if(zoomDirection == 'in') {
-                if(dir > 0) {
-                    path.z += -5;
-                } else {
-                    path.z += 5;
-                }
-            } else {
-                if(dir > 0) {
-                    path.z += 5;
-                } else {
-                    path.z += -5;
-                }
+            //console.log(scale);
+
+            if(!isFinite(scale)) {
+                path.isAnimating = false;
+                path.endFrame = progress;
+                continue;
             }
 
-            var scale = fov / (fov + -(shapeProgress * 5));
-
-            if(!isFinite(scale)) continue;
+            path.ref.style.transform = 'scale(' + scale + ')';
 
             //console.log(path.z, fov, (fov + path.z), scale);
-
-            path.ref.style.transform = 'scale(' + scale + ')';
 
             // if (path.z >= path.start.z) {
             //     path.z = path.start.z;
             // }
 
+        } else {
+            var something = progress - path.endFrame;
+            if(something == 0) {
+                path.isAnimating = true;
+            }
         }
 
         // Check if pixel should being animating yet
