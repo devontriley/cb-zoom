@@ -1,2 +1,4 @@
 node_modules
 .ds_store
+.idea
+package-lock.json
