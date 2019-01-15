@@ -6366,6 +6366,15 @@ var paths = svg.querySelectorAll('path');
 
 for (var i = 0; i < paths.length; i++) {
     var p = paths[i];
+    var start = i * 30;
+
+    // if(i <= 3) {
+    //     start = 0;
+    // } else if(i > 3 && i < 6) {
+    //     start = 60;
+    // } else if(i > 6 && i < 9) {
+    //     start = 120;
+    // }
 
     p.style.position = 'relative';
     p.style.transformOrigin = 'center center';
@@ -6374,13 +6383,14 @@ for (var i = 0; i < paths.length; i++) {
     pathsArr.push({
         ref: p,
         svgObj: svgObj.children()[i],
-        startFrame: i * 60,
+        startFrame: start,
         scale: 1,
-        duration: 420,
+        duration: 30,
         opacity: 1,
         isAnimating: true,
         endFrame: 0,
-        direction: 1
+        direction: -1
+        //direction: 1
         //direction: Math.random() < 0.5 ? -1 : 1
     });
 }
@@ -6390,22 +6400,42 @@ for (var i = 0; i < paths.length; i++) {
 // function mouseScroll(e) {
 //     e.preventDefault();
 //     var deltaY = e.deltaY;
-//     console.log(deltaY);
+//
 //     render(deltaY);
 // }
 
 render();
 
-// function isShapeOnScreen(position) {
-//     return (position.bottom <= 0 || position.top >= window.innerHeight || position.left >= window.innerWidth || position.right <= 0) ? false : true;
-// }
+// t: current time
+// b: begInnIng value
+// c: change In value
+// d: duration
+
+function ease(x, t, b, c, d) {
+    if (t == 0) return b;
+    if (t == d) return b + c;
+    if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+    return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+}
+
+var progressDir = 1;
 
 function render(delta) {
     //var zoomDirection = (delta < 0) ? 'in' : 'out';
     var zoomDirection = 'in';
     var i = pathsArr.length;
 
-    progress += zoomDirection == 'in' ? 1 : -1;
+    if (progress == 270) {
+        progressDir = -1;
+    } else if (progress == 0) {
+        progressDir = 1;
+    }
+
+    progress += progressDir;
+
+    console.log(progress);
+
+    //progress += (zoomDirection == 'in') ? 1 : -1;
 
     if (progress < 0) {
         progress = 0;
@@ -6416,6 +6446,7 @@ function render(delta) {
         var path = pathsArr[i];
         var startFrame = path.startFrame;
         var duration = path.duration;
+        var direction = path.direction;
 
         // Set shape to animating and visible when reaching it's endFrame in reverse
         if (path.endFrame > progress && path.isAnimating == false) {
@@ -6430,18 +6461,23 @@ function render(delta) {
 
         // z-indexing
         if (path.startFrame == progress) {
-            path.direction > 0 ? svg.appendChild(path.ref) : svg.insertBefore(svg.children[0], path.ref);
+            direction > 0 ? svg.appendChild(path.ref) : svg.insertBefore(svg.children[0], path.ref);
         }
 
         // Check if we've hit shape start
         if (progress >= path.startFrame) {
 
             // time since this shape started animating
-            var shapeProgress = (progress - startFrame) * path.direction;
+            var shapeProgress = progress - startFrame;
 
             // % through animation
             //var scale = fov / (fov - (shapeProgress));
-            var scale = shapeProgress / duration;
+            //var scale = shapeProgress / duration;
+            //console.log(scale);
+
+            var scale = ease(0, shapeProgress, 0, 1, duration);
+
+            var newScale = direction > 0 ? 1 + scale * 3 : 1 - scale * 0.75;
 
             // New opacity
             var newOpacity = 1 - scale;
@@ -6457,24 +6493,21 @@ function render(delta) {
             }
 
             // Adjust scale
-            path.ref.style.transform = 'scale(' + (scale + 1) + ')';
+            path.ref.style.transform = 'scale(' + newScale + ')';
 
             // Adjust opacity when moving into background
+            //if(scale > 0.75) {
             path.svgObj.attr('fill-opacity', newOpacity);
-            if (scale > duration / 60 / 1.1) {
-                path.svgObj.attr('fill-opacity', newOpacity);
-            }
+            //}
 
             // Adjust blur
-            path.svgObj.filter(function (add) {
-                add.gaussianBlur(scale * 3);
-            });
+            // path.svgObj.filter(function(add) {
+            //     add.gaussianBlur(scale * 3);
+            // });
         }
     }
 
-    if (progress < 800) {
-        window.requestAnimationFrame(render);
-    }
+    window.requestAnimationFrame(render);
 }
 
 /***/ })
